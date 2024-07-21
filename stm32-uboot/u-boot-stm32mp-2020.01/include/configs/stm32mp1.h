@@ -137,7 +137,7 @@
  * for nor boot, use SD card = mmc0
  */
 
-#define STM32MP_BOOTCMD "bootcmd_stm32mp=" \
+#define STM32MP_BOOTCMD "bootcmd_stm32mp=ext4load mmc 1:2 c2000000 uImage;ext4load mmc 1:2 c4000000 stm32mp157d-learn.dtb;bootm c2000000 - c4000000" \
 	"echo \"Boot over ${boot_device}${boot_instance}!\";" \
 	"if test ${boot_device} = serial || test ${boot_device} = usb;" \
 	"then stm32prog ${boot_device} ${boot_instance}; " \
