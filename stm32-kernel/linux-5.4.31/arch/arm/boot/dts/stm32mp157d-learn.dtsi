@@ -166,6 +166,20 @@
 	status = "okay";
 };
 
+&sdmmc3 {
+    arm,primecell-periphid = <0x10153180>;
+    pinctrl-names = "default", "opendrain", "sleep";
+    pinctrl-0 = <&sdmmc3_b4_pins_a>;
+    pinctrl-1 = <&sdmmc3_b4_od_pins_a>;
+    pinctrl-2 = <&sdmmc3_b4_sleep_pins_a>;
+    non-removable;
+    st,neg-edge;
+    bus-width = <4>;
+    vmmc-supply = <&v3v3>;
+    status = "okay";
+    keep-power-in-suspend;
+};
+
 &sram {
 	dma_pool: dma_pool@0 {
 		reg = <0x50000 0x10000>;
