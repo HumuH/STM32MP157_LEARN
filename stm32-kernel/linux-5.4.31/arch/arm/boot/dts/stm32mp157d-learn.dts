@@ -37,6 +37,21 @@
 			no-map;
         };
 	};
+	gpioled{
+		compatible = "gpio-leds";
+		pinctrl-name = "default";
+		pinctrl-0 = <&gpio_led_pins>;
+		led-red {
+			label = "error-led";
+			gpios = <&gpioi 0 GPIO_ACTIVE_LOW>;
+			status = "okay";
+		};
+		led-green {
+			label = "sys-led";
+			gpios = <&gpiof 3 GPIO_ACTIVE_LOW>;
+			status = "okay";
+		};
+	};
 };
 
 &cpu1{
