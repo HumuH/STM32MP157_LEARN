@@ -29,8 +29,8 @@
 #define LEDDEV_NAME "led_learn"
 #define LEDDEV_GROUP_PATH "gpioleds-learn"
 
-#define LEDOFF      0
-#define LEDON       1
+#define LEDOFF      1
+#define LEDON       0
 
 dev_t parent_devid = 0;
 struct class *led_class = NULL;
@@ -55,7 +55,7 @@ static int led_open(struct inode *inode, struct file *filp){
         return -1;
     }
     filp->private_data = container_of(inode->i_cdev, led_dev, cdev);
-    pr_err("led device open!\r\n");
+    
     return 0;
 }
 
@@ -157,13 +157,13 @@ static int led_probe(struct platform_device *pdev){
     struct device_node *parent_node = NULL;
     struct device_node *ptr = NULL;
     int major_devid = 0;
-    pr_err("led:start probe\r\n");
+    
     parent_node = of_find_node_by_name(NULL, LEDDEV_GROUP_PATH);
     if (parent_node == NULL){
         pr_err("led: can't find led gpio group\r\n");
         return ret;
     }
-    pr_err("led:start probe1\r\n");
+    
     for (i=0; i<LEDDEV_CNT; i++){
         led[i].node = of_get_next_child(parent_node, ptr);
         ptr = led[i].node;
@@ -173,15 +173,15 @@ static int led_probe(struct platform_device *pdev){
             return ret;
         }
     }
-    pr_err("led:start probe2\r\n");
+    
     ret = alloc_chrdev_region(&parent_devid, 0, LEDDEV_CNT, LEDDEV_NAME);
     if (ret < 0){
         pr_err("led: failed to alloc chrdev region\r\n");
         goto free_gpio;
     }
-    pr_err("led:start probe3\r\n");
+    
     major_devid = MAJOR(parent_devid);
-    pr_err("led:start probe4\r\n");
+    
     /* 创建字符设备，注册到内核中 */
     for (i=0; i<LEDDEV_CNT; i++){
         led[i].devid = parent_devid + i;
@@ -197,7 +197,6 @@ static int led_probe(struct platform_device *pdev){
         }
     }
 
-    pr_err("led:start probe5\r\n");
     /* 创建设备的类，注册到内核中 */
     led_class = class_create(THIS_MODULE, LEDDEV_NAME);
 
@@ -205,7 +204,7 @@ static int led_probe(struct platform_device *pdev){
         pr_err("led:class create failed\r\n");
         goto cdev_del;
     }
-    pr_err("led:start probe6\r\n");
+
     /* 创建设备 */
     for (i=0; i<LEDDEV_CNT; i++){
         led[i].device = device_create(led_class, NULL, led[i].devid, NULL, led[i].label);
