@@ -6,6 +6,17 @@
 #include <dt-bindings/pinctrl/stm32-pinfunc.h>
 
 &pinctrl {
+	gpio_led_pins: gpio_led {
+		 pins {
+			pinmux = <STM32_PINMUX('I', 0, GPIO)>,
+					 <STM32_PINMUX('F', 3, GPIO)>;	//复用GPIO功能
+			drive-push-pull;						//推挽输出
+			bias-pull-up;							//内部上拉
+			output-high;							//默认输出高电平
+			slew-rate = <0>;						//最慢的速率
+		 };
+	};
+
 	adc1_in6_pins_a: adc1-in6 {
 		pins {
 			pinmux = <STM32_PINMUX('F', 12, ANALOG)>;
@@ -412,7 +423,7 @@
 				 <STM32_PINMUX('H', 13, AF14)>, /* LCD_G2 */
 				 <STM32_PINMUX('H', 14, AF14)>, /* LCD_G3 */
 				 <STM32_PINMUX('H', 15, AF14)>, /* LCD_G4 */
-				 <STM32_PINMUX('I',  0, AF14)>, /* LCD_G5 */
+				 //<STM32_PINMUX('I',  0, AF14)>, /* LCD_G5 */
 				 <STM32_PINMUX('I',  1, AF14)>, /* LCD_G6 */
 				 <STM32_PINMUX('I',  2, AF14)>, /* LCD_G7 */
 				 <STM32_PINMUX('D',  9, AF14)>, /* LCD_B0 */
@@ -448,7 +459,7 @@
 				 <STM32_PINMUX('H', 13, ANALOG)>, /* LCD_G2 */
 				 <STM32_PINMUX('H', 14, ANALOG)>, /* LCD_G3 */
 				 <STM32_PINMUX('H', 15, ANALOG)>, /* LCD_G4 */
-				 <STM32_PINMUX('I',  0, ANALOG)>, /* LCD_G5 */
+				 //<STM32_PINMUX('I',  0, ANALOG)>, /* LCD_G5 */
 				 <STM32_PINMUX('I',  1, ANALOG)>, /* LCD_G6 */
 				 <STM32_PINMUX('I',  2, ANALOG)>, /* LCD_G7 */
 				 <STM32_PINMUX('D',  9, ANALOG)>, /* LCD_B0 */
