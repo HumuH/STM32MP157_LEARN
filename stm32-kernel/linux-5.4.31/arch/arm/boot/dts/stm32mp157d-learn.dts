@@ -38,18 +38,20 @@
         };
 	};
 
-	gpioleds-learn-dts{
+	gpioleds-learn{
 		compatible = "learn,led";
 		pinctrl-name = "default";
 		pinctrl-0 = <&gpio_led_pins>;
 		status = "okay";
 		led-red {
 			label = "error-led";
-			gpios = <&gpioi 0 GPIO_ACTIVE_LOW>;
+			gpio = <&gpioi 0 GPIO_ACTIVE_LOW>;
+			default-status = "off";
 		};
 		led-green {
 			label = "sys-led";
-			gpios = <&gpiof 3 GPIO_ACTIVE_LOW>;
+			gpio = <&gpiof 3 GPIO_ACTIVE_LOW>;
+			default-status = "on";
 		};
 	};
 };
