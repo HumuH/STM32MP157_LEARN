@@ -17,6 +17,16 @@
 		 };
 	};
 
+	gpio_beep_pins: gpio_beep {
+		pins {
+			pinmux = <STM32_PINMUX('C', 7, GPIO)>;
+			drive-push-pull;
+			bias-pull-up;
+			output-high;
+			slew-rate = <0>;
+		};
+	};
+
 	adc1_in6_pins_a: adc1-in6 {
 		pins {
 			pinmux = <STM32_PINMUX('F', 12, ANALOG)>;
