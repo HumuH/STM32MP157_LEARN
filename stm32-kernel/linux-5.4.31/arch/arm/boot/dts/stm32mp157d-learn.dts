@@ -54,6 +54,14 @@
 			default-status = "on";
 		};
 	};
+
+	beep {
+		compatible = "learn,beep";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_beep_pins>;
+		gpio = <&gpioc 7 GPIO_ACTIVE_LOW>;
+	};
 };
 
 &cpu1{
