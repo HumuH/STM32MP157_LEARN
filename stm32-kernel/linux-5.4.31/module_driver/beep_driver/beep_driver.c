@@ -18,21 +18,16 @@
 #define BEEP_OFF 1
 
 typedef struct beep_dev_s{
-    dev_t beep_id;
-    struct cdev cdev;
-    struct device *device;
-    struct class *class;
     int gpio_id;
 } beep_dev;
 
 beep_dev beep;
 
-
-
 static int beep_open(struct inode *inode, struct file *filp){
     filp->private_data = &beep;
     return 0;
 }
+
 static ssize_t beep_read(struct file *filp, char __user *buf, size_t cnt, loff_t *offt){
     beep_dev *dev = NULL;
     char beep_status = 0;
@@ -142,16 +137,16 @@ static struct platform_driver beep_driver = {
     .remove = beep_remove,
 };
 
-static int __init beep_init(void){
+static int __init beep_driver_init(void){
     return platform_driver_register(&beep_driver);
 }
 
-static void __exit beep_exit(void){
+static void __exit beep_driver_exit(void){
     platform_driver_unregister(&beep_driver);
 }
 
-module_init(beep_init);
-module_exit(beep_exit);
+module_init(beep_driver_init);
+module_exit(beep_driver_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("SQQ");
 MODULE_INFO(intree, "Y");
