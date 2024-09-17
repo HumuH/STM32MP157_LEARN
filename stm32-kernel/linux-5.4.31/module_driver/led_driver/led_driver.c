@@ -99,7 +99,7 @@ static ssize_t led_read(struct file *filp, char __user *buf, size_t cnt, loff_t 
     led_status = gpio_get_value(dev->gpio_id);
     buf[0] = led_status;
 
-    return 0;
+    return 1;
 }
 
 static struct file_operations led_fops = {
