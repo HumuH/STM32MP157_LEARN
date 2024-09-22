@@ -18,34 +18,73 @@
 #define BUTTONDEV_CNT 2
 #define BUTTONDEV_NAME "button_learn"
 
-dev_t button_major = 1;
-
+dev_t button_parent = 120;
+static struct class *button_class = NULL;
 
 enum button_status{
     KEY_PRESS = 0,
-    KEY_KEEP = 1,
-    KEY_RELEASE = 2,
+    KEY_RELEASE = 1,
+    KEY_KEEP = 2,
 };
 
 typedef struct button_dev_s{
     dev_t devid;            //设备号
     struct cdev cdev;       //字符设备
-    struct class *class;    //类
     struct device *device;  //设备
     struct device_node *nd; //设备节点
     int gpio_id;            //gpio号
-    struct timer_list timer;//定时器
     int irq_num;            //中断号
     spinlock_t spinlock;    //自旋锁
     enum button_status status;  //状态
-    char *label;            //设备名字
+    const char* label;            //设备名字
+    
 } button_dev;
 
 button_dev button[2];
+struct timer_list button_timer;//定时器
+enum button_status last_status = KEY_KEEP;
 
 /* irq handle */
-button_irq_handler(int num, void *dev){
+static irqreturn_t button_irq_handler(int irq, void *dev_id){
+    int i = 0;
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        if (button[i].irq_num == irq){
+            button_timer.flags = i;
+            break;
+        }
+    }
+    mod_timer(&button_timer, jiffies + msecs_to_jiffies(15));
+    return 0;
+}
 
+static void key_timer_function(struct timer_list *arg){
+    int i = 0;
+    button_dev *dev = NULL;
+    unsigned long flags = 0;
+    int current_val = 0;
+
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        if (i == arg->flags){
+            dev = &button[i];
+            break;
+        }
+    }
+
+    spin_lock_irqsave(&dev->spinlock, flags);
+    
+    current_val = gpio_get_value(dev->gpio_id);
+    if (current_val == 0 && last_status == 1){
+        dev->status = KEY_PRESS;
+    }
+    else if (current_val == 1 && last_status == 0){
+        dev->status = KEY_RELEASE;
+    }
+    else{
+        dev->status = KEY_KEEP;
+    }
+    last_status = current_val;
+
+    spin_unlock_irqrestore(&dev->spinlock, flags);
 }
 
 static int button_open(struct inode *inode, struct file *filp){
@@ -58,11 +97,13 @@ static int button_open(struct inode *inode, struct file *filp){
 }
 
 static ssize_t button_read(struct file *filp, char __user *buf, size_t cnt, loff_t *loft){
+    button_dev *dev = NULL;
+
     if ( filp == NULL ){
         pr_err("button:get no file\r\n");
         return -EINVAL;
     }
-    button_dev *dev = NULL;
+
     dev = (button_dev*)filp->private_data;
 
     buf[0] = dev->status;
@@ -79,7 +120,7 @@ static int button_release(struct inode *inode, struct file *filp){
     return 0;
 }
 
-static struct file_operations = {
+static struct file_operations button_fops = {
     .owner = THIS_MODULE,
     .open = button_open,
     .read = button_read,
@@ -87,20 +128,36 @@ static struct file_operations = {
 };
 
 static int button_parse_dt(void){
-    struct device *parent_node = NULL;
-    struct device *ptr = NULL;
+    struct device_node *parent_node = NULL;
+    struct device_node *ptr = NULL;
     int i = 0;
     int ret = 0;
     
     parent_node = of_find_node_by_name(NULL, BUTTONDEV_NAME);
+    if (parent_node == NULL){
+        pr_err("button:parse device tree failed\n");
+        return -EINVAL;
+    }
     
     for (i=0; i<BUTTONDEV_CNT; i++){
         button[i].nd = of_get_next_child(parent_node, ptr);
         ptr = button[i].nd;
 
-        ret = of_property_read_string(ptr, "label", &(button[i].label));
+        ret = of_property_read_string(ptr, "label", &button[i].label);
+        if (ret < 0){
+            pr_err("button:failed to get label\n");
+            return -EINVAL;
+        }
         button[i].gpio_id = of_get_gpio(ptr, 0);
+        if (!gpio_is_valid(button[i].gpio_id)){
+            pr_err("button:failed to get gpio\n");
+            return -EINVAL;
+        }
         button[i].irq_num = irq_of_parse_and_map(ptr, 0);
+        if (!button[i].irq_num){
+            pr_err("button:failed to get irq_num\n");
+            return -EINVAL;
+        }
     }
     return 0;
 }
@@ -110,12 +167,23 @@ static int button_exit_init(button_dev *dev){
     u32 irq_flags = 0;
 
     ret = gpio_request(dev->gpio_id, dev->label);
+    if (ret < 0){
+        pr_err("button:failed to request gpio\n");
+        return ret;
+    }
 
     gpio_direction_input(dev->gpio_id);
 
     irq_flags = irq_get_trigger_type(dev->irq_num);
+    if (irq_flags == IRQF_TRIGGER_NONE){
+        irq_flags = IRQF_TRIGGER_FALLING;
+    }
 
     ret = request_irq(dev->irq_num, button_irq_handler, irq_flags, dev->label, dev);
+    if (ret){
+        gpio_free(dev->gpio_id);
+        return ret;
+    }
 
     return 0;
 }
@@ -127,17 +195,78 @@ static int button_probe(struct platform_device *pdev){
 
     //初始化button gpio、中断
     for (i=0; i<BUTTONDEV_CNT; i++){
-        button_exit_init(button[i].nd);
+        button_exit_init(&button[i]);
     }
 
-    ret = alloc_chrdev_region(&button_major, 0, BUTTONDEV_CNT, BUTTONDEV_NAME);
+    //申请设备号
+    ret = alloc_chrdev_region(&button_parent, 0, BUTTONDEV_CNT, BUTTONDEV_NAME);
+    if (ret < 0){
+        pr_err("button:alloc chrdev failed\n");
+        goto free_gpio;
+    }
 
+    //创建字符设备注册到内核
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        button[i].devid = MKDEV(MAJOR(button_parent), i);
+
+        cdev_init(&button[i].cdev, &button_fops);
+
+        ret = cdev_add(&button[i].cdev, button[i].devid, 1);
+        if (ret < 0){
+            pr_err("button:register into kernel failed\n");
+            goto unregister_devid;
+        }
+    }
+
+    //创建类注册到内核
+    button_class = class_create(THIS_MODULE, BUTTONDEV_NAME);
+    if (ret < 0){
+        pr_err("button:create class failed\n");
+        goto del_cdev;
+    }
+
+    //创建设备
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        button[i].device = device_create(button_class, NULL, button[i].devid, NULL, button[i].label);
+        if (ret < 0){
+            pr_err("button:create device failed\r\n");
+            goto del_class;
+        }
+    }
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        timer_setup(&button_timer, key_timer_function, 0);
+    }
     
+    return 0;
 
+del_class:
+    class_destroy(button_class);
+del_cdev:
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        cdev_del(&button[i].cdev);
+    }
+unregister_devid:
+    unregister_chrdev_region(button_parent, BUTTONDEV_CNT);
+free_gpio:
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        gpio_free(button[i].gpio_id);
+    }
+    return -EIO;
 }
 
 static int button_remove(struct platform_device *pdev){
+    int i = 0;
 
+    device_destroy(button_class, button_parent);
+    class_destroy(button_class);
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        cdev_del(&button[i].cdev);
+    }
+    unregister_chrdev_region(button_parent, BUTTONDEV_CNT);
+    for (i=0; i<BUTTONDEV_CNT; i++){
+        gpio_free(button[i].gpio_id);
+    }
+    return 0;
 }
 
 
@@ -151,7 +280,7 @@ MODULE_DEVICE_TABLE(of, button_of_match);
 static struct platform_driver button_driver = {
     .driver = {
         .name = "button-learn-driver",
-        .of_match_table = &of_match_button,
+        .of_match_table = button_of_match,
     },
     .probe = button_probe,
     .remove = button_remove,

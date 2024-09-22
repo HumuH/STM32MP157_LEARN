@@ -67,15 +67,15 @@
 		compatible = "learn,button";
 		status = "okay";
 		button0{
-			gpio = <&gpiog, 3, GPIO_ACTIVE_LOW>;
+			gpio = <&gpiog 3 GPIO_ACTIVE_LOW>;
 			interrupt-parent = <&gpiog>;
-			interrupts = <3, IRQ_TYPE_EDGE_RISING>;
+			interrupts = <3 IRQ_TYPE_EDGE_BOTH>;
 			label = "button_red";
 		};
 		button1{
-			gpio = <&gpioh, 7, GPIO_ACTIVE_LOW>;
+			gpio = <&gpioh 7 GPIO_ACTIVE_LOW>;
 			interrupt-parent = <&gpioh>;
-			interrupts = <7, IRQ_TYPE_EDGE_RISING>;
+			interrupts = <7 IRQ_TYPE_EDGE_BOTH>;
 			label = "button_green";
 		};
 	};
