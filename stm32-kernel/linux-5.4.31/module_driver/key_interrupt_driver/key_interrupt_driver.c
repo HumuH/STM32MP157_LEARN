@@ -16,7 +16,7 @@
 #include <linux/semaphore.h>
 
 #define BUTTONDEV_CNT 2
-#define BUTTONDEV_NAME "button_learn"
+#define BUTTONDEV_NAME "buttons-learn"
 
 dev_t button_parent = 120;
 static struct class *button_class = NULL;
@@ -36,12 +36,12 @@ typedef struct button_dev_s{
     int irq_num;            //中断号
     spinlock_t spinlock;    //自旋锁
     enum button_status status;  //状态
+    struct timer_list button_timer;//定时器
     const char* label;            //设备名字
-    
 } button_dev;
 
 button_dev button[2];
-struct timer_list button_timer;//定时器
+int chip_select = 0;
 enum button_status last_status = KEY_KEEP;
 
 /* irq handle */
@@ -49,29 +49,24 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id){
     int i = 0;
     for (i=0; i<BUTTONDEV_CNT; i++){
         if (button[i].irq_num == irq){
-            button_timer.flags = i;
+            chip_select = i;
             break;
         }
     }
-    mod_timer(&button_timer, jiffies + msecs_to_jiffies(15));
-    return 0;
+    
+    mod_timer(&button[chip_select].button_timer, jiffies + msecs_to_jiffies(15));
+    
+    return IRQ_HANDLED;
 }
 
 static void key_timer_function(struct timer_list *arg){
-    int i = 0;
     button_dev *dev = NULL;
-    unsigned long flags = 0;
     int current_val = 0;
-
-    for (i=0; i<BUTTONDEV_CNT; i++){
-        if (i == arg->flags){
-            dev = &button[i];
-            break;
-        }
-    }
+    unsigned long flags = 0;
+    
+    dev = &button[chip_select];
 
     spin_lock_irqsave(&dev->spinlock, flags);
-    
     current_val = gpio_get_value(dev->gpio_id);
     if (current_val == 0 && last_status == 1){
         dev->status = KEY_PRESS;
@@ -83,8 +78,8 @@ static void key_timer_function(struct timer_list *arg){
         dev->status = KEY_KEEP;
     }
     last_status = current_val;
-
     spin_unlock_irqrestore(&dev->spinlock, flags);
+    //spin_unlock(&dev->spinlock);
 }
 
 static int button_open(struct inode *inode, struct file *filp){
@@ -98,17 +93,21 @@ static int button_open(struct inode *inode, struct file *filp){
 
 static ssize_t button_read(struct file *filp, char __user *buf, size_t cnt, loff_t *loft){
     button_dev *dev = NULL;
+    int ret = 0;
+    unsigned long flags = 0;
 
     if ( filp == NULL ){
         pr_err("button:get no file\r\n");
         return -EINVAL;
     }
-
     dev = (button_dev*)filp->private_data;
 
-    buf[0] = dev->status;
+    spin_lock_irqsave(&dev->spinlock, flags);
+    ret = copy_to_user(buf, &dev->status, sizeof(int));
+    dev->status = KEY_KEEP;
+    spin_unlock_irqrestore(&dev->spinlock, flags);
 
-    return 1;
+    return ret;
 }
 
 static int button_release(struct inode *inode, struct file *filp){
@@ -148,7 +147,7 @@ static int button_parse_dt(void){
             pr_err("button:failed to get label\n");
             return -EINVAL;
         }
-        button[i].gpio_id = of_get_gpio(ptr, 0);
+        button[i].gpio_id = of_get_named_gpio(ptr, "gpio", 0);
         if (!gpio_is_valid(button[i].gpio_id)){
             pr_err("button:failed to get gpio\n");
             return -EINVAL;
@@ -165,6 +164,8 @@ static int button_parse_dt(void){
 static int button_exit_init(button_dev *dev){
     int ret = 0;
     u32 irq_flags = 0;
+
+    spin_lock_init(&dev->spinlock);
 
     ret = gpio_request(dev->gpio_id, dev->label);
     if (ret < 0){
@@ -184,6 +185,8 @@ static int button_exit_init(button_dev *dev){
         gpio_free(dev->gpio_id);
         return ret;
     }
+
+    timer_setup(&dev->button_timer, key_timer_function, 0);
 
     return 0;
 }
@@ -233,9 +236,7 @@ static int button_probe(struct platform_device *pdev){
             goto del_class;
         }
     }
-    for (i=0; i<BUTTONDEV_CNT; i++){
-        timer_setup(&button_timer, key_timer_function, 0);
-    }
+
     
     return 0;
 
@@ -249,6 +250,8 @@ unregister_devid:
     unregister_chrdev_region(button_parent, BUTTONDEV_CNT);
 free_gpio:
     for (i=0; i<BUTTONDEV_CNT; i++){
+        del_timer_sync(&button[i].button_timer);
+        free_irq(button[i].irq_num, NULL);
         gpio_free(button[i].gpio_id);
     }
     return -EIO;
@@ -264,6 +267,8 @@ static int button_remove(struct platform_device *pdev){
     }
     unregister_chrdev_region(button_parent, BUTTONDEV_CNT);
     for (i=0; i<BUTTONDEV_CNT; i++){
+        del_timer_sync(&button[i].button_timer);
+        free_irq(button[i].irq_num, NULL);
         gpio_free(button[i].gpio_id);
     }
     return 0;
