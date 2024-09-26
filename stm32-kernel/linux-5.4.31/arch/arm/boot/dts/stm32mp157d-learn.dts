@@ -62,6 +62,23 @@
 		pinctrl-0 = <&gpio_beep_pins>;
 		gpio = <&gpioc 7 GPIO_ACTIVE_LOW>;
 	};
+
+	buttons-learn {
+		compatible = "learn,button";
+		status = "okay";
+		button0{
+			gpio = <&gpiog 3 GPIO_ACTIVE_LOW>;
+			interrupt-parent = <&gpiog>;
+			interrupts = <3 IRQ_TYPE_EDGE_BOTH>;
+			label = "button_red";
+		};
+		button1{
+			gpio = <&gpioh 7 GPIO_ACTIVE_LOW>;
+			interrupt-parent = <&gpioh>;
+			interrupts = <7 IRQ_TYPE_EDGE_BOTH>;
+			label = "button_green";
+		};
+	};
 };
 
 &cpu1{

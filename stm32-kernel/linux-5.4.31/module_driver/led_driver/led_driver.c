@@ -99,7 +99,7 @@ static ssize_t led_read(struct file *filp, char __user *buf, size_t cnt, loff_t 
     led_status = gpio_get_value(dev->gpio_id);
     buf[0] = led_status;
 
-    return 0;
+    return 1;
 }
 
 static struct file_operations led_fops = {
@@ -156,7 +156,6 @@ static int led_probe(struct platform_device *pdev){
 
     struct device_node *parent_node = NULL;
     struct device_node *ptr = NULL;
-    int major_devid = 0;
     
     parent_node = of_find_node_by_name(NULL, LEDDEV_GROUP_PATH);
     if (parent_node == NULL){
@@ -180,11 +179,9 @@ static int led_probe(struct platform_device *pdev){
         goto free_gpio;
     }
     
-    major_devid = MAJOR(parent_devid);
-    
     /* 创建字符设备，注册到内核中 */
     for (i=0; i<LEDDEV_CNT; i++){
-        led[i].devid = parent_devid + i;
+        led[i].devid = MKDEV(MAJOR(parent_devid), i);
 
         led[i].cdev.owner = THIS_MODULE;
         
