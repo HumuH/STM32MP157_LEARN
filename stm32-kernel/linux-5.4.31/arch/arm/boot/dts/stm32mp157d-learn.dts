@@ -93,3 +93,17 @@
 &optee {
     status = "okay";
 };
+
+&timers5 {
+	status = "okay";
+	/* spare all DMA channels since they are not needed for PWM output */
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+	pwm1: pwm {
+		pinctrl-0 = <&pwm5_4_pins_a>;
+		pinctrl-1 = <&pwm5_4_sleep_pins_a>;
+		pinctrl-names = "default", "sleep";
+		#pwm-cells = <2>;
+		status = "okay";
+	};
+};
