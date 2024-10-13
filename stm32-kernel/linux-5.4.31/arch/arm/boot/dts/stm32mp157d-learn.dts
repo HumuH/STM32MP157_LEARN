@@ -93,3 +93,14 @@
 &optee {
     status = "okay";
 };
+
+&i2c5 {
+	status = "okay";
+	pinctrl-name = "default", "sleep";
+	pinctrl-0 = <&i2c5_pins_a>;
+	pinctrl-1 = <&i2c5_pins_sleep_a>;
+	mpu6050@68 {
+		compatible = "learn,mpu6050";
+		ret = <0x68>;
+	};
+};

@@ -3,7 +3,7 @@ CURRENT_PATH := ${shell pwd}
 GCC=arm-none-linux-gnueabihf-gcc
 
 ############################
-MODULE_NAME=led
+MODULE_NAME=mpu
 obj-m := ${MODULE_NAME}_driver.o
 driver_src := ${MODULE_NAME}_driver.c
 app_target := App${MODULE_NAME}
