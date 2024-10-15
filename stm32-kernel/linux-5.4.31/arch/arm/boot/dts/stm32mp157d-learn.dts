@@ -101,6 +101,6 @@
 	pinctrl-1 = <&i2c5_pins_sleep_a>;
 	mpu6050@68 {
 		compatible = "learn,mpu6050";
-		ret = <0x68>;
+		reg = <0x68>;
 	};
 };

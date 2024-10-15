@@ -8,8 +8,8 @@
 &pinctrl {
 	gpio_led_pins: gpio_led {
 		 pins {
-			pinmux = <STM32_PINMUX('I', 0, GPIO)>,
-					 <STM32_PINMUX('F', 3, GPIO)>;	//复用GPIO功能
+			pinmux = <STM32_PINMUX('F', 3, GPIO)>;	//复用GPIO功能
+			//		 <STM32_PINMUX('I', 0, GPIO)>,
 			drive-push-pull;						//推挽输出
 			bias-pull-up;							//内部上拉
 			output-high;							//默认输出高电平
@@ -667,6 +667,22 @@
 			pinmux = <STM32_PINMUX('H', 11, ANALOG)>; /* TIM5_CH2 */
 		};
 	};
+
+	pwm5_4_pins_a: pwm5_4-0 {
+		pins {
+			pinmux = <STM32_PINMUX('I', 0, AF2)>; /* TIM5_CH4 */
+			bias-pull-down;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+	};
+
+	pwm5_4_sleep_pins_a: pwm5_4-sleep-0 {
+		pins {
+			pinmux = <STM32_PINMUX('I', 0, ANALOG)>; /* TIM5_CH4 */			
+		};
+	};
+
 
 	pwm8_pins_a: pwm8-0 {
 		pins {
@@ -1366,12 +1382,12 @@
 		};
 	};
 
-	usbotg_fs_dp_dm_pins_a: usbotg-fs-dp-dm-0 {
-		pins {
-			pinmux = <STM32_PINMUX('A', 11, ANALOG)>, /* OTG_FS_DM */
-				 <STM32_PINMUX('A', 12, ANALOG)>; /* OTG_FS_DP */
-		};
-	};
+//	usbotg_fs_dp_dm_pins_a: usbotg-fs-dp-dm-0 {
+//		pins {
+//			pinmux = <STM32_PINMUX('A', 11, ANALOG)>, /* OTG_FS_DM */
+//				 <STM32_PINMUX('A', 12, ANALOG)>; /* OTG_FS_DP */
+//		};
+//	};
 };
 
 &pinctrl_z {

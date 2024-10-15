@@ -46,19 +46,17 @@ typedef struct {
     u16 temp;
 } mpu6050_dev;
 
-static int mpu6050_write_regs(mpu6050_dev *dev, u8 reg, u8 *buf, int len){
+static int mpu6050_write_regs(mpu6050_dev *dev, u8 reg, u8 val){
     struct i2c_msg msg;
     struct i2c_client *client = (struct i2c_client*)(dev->client);
-    u8 tx_buf[256] = {0};
 
+    u8 tx_buf[2] = {0};
     tx_buf[0] = reg;
-    memcpy(buf[1], tx_buf, len);
-
+    tx_buf[1] = val;
     msg.addr = client->addr;
     msg.flags = 0;
-    msg.len = len + 1;
+    msg.len = 2;
     msg.buf = tx_buf;
-
     return i2c_transfer(client->adapter, &msg, 1);
 }
 
@@ -92,12 +90,12 @@ static int mpu6050_read_regs(mpu6050_dev *dev, u8 reg, void *val, int len){
 }
 
 static int mpu6050_chip_init(mpu6050_dev *dev){
-    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_RESET, 1);
-    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_WAKEUP, 1);
-    mpu6050_write_regs(dev, MPU_REG_CONFIG, 0x06, 1);
-    mpu6050_write_regs(dev, MPU_REG_SMPLRT_DIV, (MPU_MASK_SMPLRT_DIV_RATE & 0x7), 1);
-    mpu6050_write_regs(dev, MPU_REG_ACCEL_CONFIG, MPU_MASK_ACCEL_CONFIG_FS_SEL, 1);
-    mpu6050_write_regs(dev, MPU_REG_GYRO_CONFIG, MPU_MASK_GYRO_CONFIG_FS_SEL, 1);
+    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_RESET);
+    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_WAKEUP);
+    mpu6050_write_regs(dev, MPU_REG_CONFIG, 0x06);
+    mpu6050_write_regs(dev, MPU_REG_SMPLRT_DIV, (MPU_MASK_SMPLRT_DIV_RATE & 0x7));
+    mpu6050_write_regs(dev, MPU_REG_ACCEL_CONFIG, MPU_MASK_ACCEL_CONFIG_FS_SEL);
+    mpu6050_write_regs(dev, MPU_REG_GYRO_CONFIG, MPU_MASK_GYRO_CONFIG_FS_SEL);
     return 0;
 }
 
@@ -154,7 +152,6 @@ static int mpu6050_get_accel(mpu6050_dev *dev){
 static int mpu6050_open(struct inode *nd, struct file *filp){
     struct cdev *cdev = filp->f_path.dentry->d_inode->i_cdev;
     mpu6050_dev *dev = container_of(cdev, mpu6050_dev, cdev);
-    pr_err("mpu:open 1 \n");
     mpu6050_chip_init(dev);
     return 0;
 }
@@ -166,7 +163,6 @@ static int mpu6050_release(struct inode *nd, struct file *filp){
 static ssize_t mpu6050_read(struct file *filp, char __user *buf, size_t cnt, loff_t *loft){
     struct cdev *cdev = filp->f_path.dentry->d_inode->i_cdev;
     u8 str[256] = {0};
-    pr_err("mpu:read 1 \n");
     mpu6050_dev *dev = container_of(cdev, mpu6050_dev, cdev);
     mpu6050_get_temp(dev);
     mpu6050_get_gyro(dev);
@@ -192,20 +188,17 @@ static int mpu6050_probe(struct i2c_client *client, const struct i2c_device_id *
     int ret = 0;
 
     mpu6050_dev *dev = 0;
-    pr_err("mpu:probe 1 \n");
     dev = devm_kmalloc(&client->dev, sizeof(mpu6050_dev), GFP_KERNEL);
 
     if (dev == NULL){
         return -ENOMEM;
     }
-    pr_err("mpu:probe 2 \n");
     /* 1.创建设备号 */
-    ret = alloc_chrdev_region(dev->dev_id, 0, MPU6050_CNT, MPU6050_NAME);
+    ret = alloc_chrdev_region(&(dev->dev_id), 0, MPU6050_CNT, MPU6050_NAME);
     if (ret < 0){
         pr_err("mpu6050:alloc_chrdev_region failed\n");
         return -ENOMEM;
     }
-    pr_err("mpu:probe 3 \n");
     /* 2.初始化cdev */
     dev->cdev.owner = THIS_MODULE;
     cdev_init(&(dev->cdev), &mpu6050_ops);
@@ -216,20 +209,17 @@ static int mpu6050_probe(struct i2c_client *client, const struct i2c_device_id *
         pr_err("mpu6050:cdev_add failed\n");
         goto del_unregister;
     }
-    pr_err("mpu:probe 4 \n");
     /* 4.创建类 */
     dev->class = class_create(THIS_MODULE, MPU6050_NAME);
     if (IS_ERR(dev->class)){
         goto del_cdev;
     }
-    pr_err("mpu:probe 5 \n");
     /* 5.创建设备 */
     dev->device = device_create(dev->class, NULL, dev->dev_id, NULL, MPU6050_NAME);
     if (IS_ERR(dev->device)){
         goto destroy_class;
     }
     dev->client = client;
-    pr_err("mpu:probe 6 \n");
     i2c_set_clientdata(client, dev);
 
     return 0;
@@ -265,6 +255,8 @@ const struct of_device_id mpu6050_of_match[] = {
     {.compatible = "mpu6050,learn"},
     {  }
 };
+
+MODULE_DEVICE_TABLE(of, mpu6050_of_match);
 
 /* i2c 驱动结构体 */
 static struct i2c_driver mpu6050_driver = {
