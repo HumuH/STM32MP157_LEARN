@@ -49,6 +49,7 @@ typedef struct {
 static int mpu6050_write_regs(mpu6050_dev *dev, u8 reg, u8 val){
     struct i2c_msg msg;
     struct i2c_client *client = (struct i2c_client*)(dev->client);
+    int error = 0;
 
     u8 tx_buf[2] = {0};
     tx_buf[0] = reg;
@@ -57,7 +58,14 @@ static int mpu6050_write_regs(mpu6050_dev *dev, u8 reg, u8 val){
     msg.flags = 0;
     msg.len = 2;
     msg.buf = tx_buf;
-    return i2c_transfer(client->adapter, &msg, 1);
+    
+    error = i2c_transfer(client->adapter, &msg, 1);
+    if (error != 1){
+        pr_err("mpu6050:i2c_transfer error\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 static int mpu6050_read_regs(mpu6050_dev *dev, u8 reg, void *val, int len){
@@ -79,10 +87,7 @@ static int mpu6050_read_regs(mpu6050_dev *dev, u8 reg, void *val, int len){
 
     ret = i2c_transfer(client->adapter, msg, 2);
 
-    if (reg == 2){
-        ret = 0;
-    }
-    else{
+    if (reg != 2){
         printk("i2c error:rd failed,ret is %d, reg is %d, len is %d", ret, reg, len);
         ret = -EREMOTEIO;
     }
@@ -90,12 +95,15 @@ static int mpu6050_read_regs(mpu6050_dev *dev, u8 reg, void *val, int len){
 }
 
 static int mpu6050_chip_init(mpu6050_dev *dev){
-    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_RESET);
-    mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_WAKEUP);
-    mpu6050_write_regs(dev, MPU_REG_CONFIG, 0x06);
-    mpu6050_write_regs(dev, MPU_REG_SMPLRT_DIV, (MPU_MASK_SMPLRT_DIV_RATE & 0x7));
-    mpu6050_write_regs(dev, MPU_REG_ACCEL_CONFIG, MPU_MASK_ACCEL_CONFIG_FS_SEL);
-    mpu6050_write_regs(dev, MPU_REG_GYRO_CONFIG, MPU_MASK_GYRO_CONFIG_FS_SEL);
+    int error = 0;
+    error += mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_RESET);
+    error += mpu6050_write_regs(dev, MPU_REG_PWR_MGMT_1, MPU_MASK_PWR_MGMT_1_WAKEUP);
+    error += mpu6050_write_regs(dev, MPU_REG_SMPLRT_DIV, (MPU_MASK_SMPLRT_DIV_RATE & 0x7));
+    error += mpu6050_write_regs(dev, MPU_REG_ACCEL_CONFIG, 0x01);
+    if (error < 0){
+        pr_err("mpu6050:chip init failed\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -247,12 +255,12 @@ static int mpu6050_remove(struct i2c_client *client){
 
 /* 传统匹配方式 ID 列表 */
 const struct i2c_device_id mpu6050_id[] = {
-    {"mpu6050", 0},
+    {"learn,mpu6050", 0},
     {  }
 };
 
 const struct of_device_id mpu6050_of_match[] = {
-    {.compatible = "mpu6050,learn"},
+    {.compatible = "learn,mpu6050"},
     {  }
 };
 
@@ -264,7 +272,7 @@ static struct i2c_driver mpu6050_driver = {
     .remove = mpu6050_remove,
     .driver = {
         .owner = THIS_MODULE,
-        .name = "mpu6050",
+        .name = "learn,mpu6050",
         .of_match_table = mpu6050_of_match,
     },
     .id_table = mpu6050_id,

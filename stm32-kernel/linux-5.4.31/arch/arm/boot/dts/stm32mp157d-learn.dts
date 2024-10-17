@@ -99,8 +99,8 @@
 	pinctrl-name = "default", "sleep";
 	pinctrl-0 = <&i2c5_pins_a>;
 	pinctrl-1 = <&i2c5_pins_sleep_a>;
-	mpu6050@68 {
+	mpu6050@d0 {
 		compatible = "learn,mpu6050";
-		reg = <0x68>;
+		reg = <0xd0>;
 	};
 };
