@@ -60,7 +60,7 @@ static int mpu6050_write_regs(mpu6050_dev *dev, u8 reg, u8 val){
     msg.buf = tx_buf;
     
     error = i2c_transfer(client->adapter, &msg, 1);
-    if (error != 1){
+    if (error < 0){
         pr_err("mpu6050:i2c_transfer error\n");
         return -1;
     }
@@ -83,7 +83,7 @@ static int mpu6050_read_regs(mpu6050_dev *dev, u8 reg, void *val, int len){
     msg[1].addr = client->addr;
     msg[1].flags = I2C_M_RD;
     msg[1].buf = val;
-    msg[1].len = 1;
+    msg[1].len = len;
 
     ret = i2c_transfer(client->adapter, msg, 2);
 

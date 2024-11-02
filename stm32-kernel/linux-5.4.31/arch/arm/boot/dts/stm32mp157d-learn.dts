@@ -96,11 +96,14 @@
 
 &i2c5 {
 	status = "okay";
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
 	pinctrl-name = "default", "sleep";
 	pinctrl-0 = <&i2c5_pins_a>;
 	pinctrl-1 = <&i2c5_pins_sleep_a>;
-	mpu6050@d0 {
+	clk = <100000>;
+	mpu6050@68 {
 		compatible = "learn,mpu6050";
-		reg = <0xd0>;
+		reg = <0x68>;
 	};
 };

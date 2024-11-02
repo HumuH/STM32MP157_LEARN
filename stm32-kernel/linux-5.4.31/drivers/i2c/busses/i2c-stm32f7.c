@@ -817,10 +817,27 @@ static void stm32f7_i2c_smbus_reload(struct stm32f7_i2c_dev *i2c_dev)
 
 static int stm32f7_i2c_release_bus(struct i2c_adapter *i2c_adap)
 {
+	u32 val = 0;
 	struct stm32f7_i2c_dev *i2c_dev = i2c_get_adapdata(i2c_adap);
 
 	dev_info(i2c_dev->dev, "Trying to recover bus\n");
 
+/*****************debug start*************************/
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_CR1);
+	dev_info(i2c_dev->dev, "i2c:CR1 is %x\n", val);
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_CR2);
+	dev_info(i2c_dev->dev, "i2c:CR2 is %x\n", val);
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_TIMINGR);
+	dev_info(i2c_dev->dev, "i2c:TIMINGR is %x\n", val);
+	val = readl_relaxed(i2c_dev->base + 0x14);
+	dev_info(i2c_dev->dev, "i2c:TIMEOUTRis %x\n", val);
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_ISR);
+	dev_info(i2c_dev->dev, "i2c:ISR is %x\n", val);
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_ICR);
+	dev_info(i2c_dev->dev, "i2c:ICR is %x\n", val);
+	val = readl_relaxed(i2c_dev->base + STM32F7_I2C_ICR);
+	dev_info(i2c_dev->dev, "i2c:ICR is %x\n", val);
+/*****************debug start*************************/
 	stm32f7_i2c_clr_bits(i2c_dev->base + STM32F7_I2C_CR1,
 			     STM32F7_I2C_CR1_PE);
 
